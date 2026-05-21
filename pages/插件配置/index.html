@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>OTTO 审核助手</title>
+    <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand-block">
+                <div class="brand-mark">⚡</div>
+                <div>
+                    <h1>OTTO 审核助手</h1>
+                    <p>Auto Moderator</p>
+                </div>
+            </div>
+            <div class="sidebar-status"><span></span>STANDBY</div>
+            <nav class="nav-menu">
+                <div class="nav-label">SETTINGS</div>
+                <button class="nav-item active" data-target="tab-otto" type="button">
+                    <span class="nav-icon">🔑</span><span>OTTO Hub</span>
+                </button>
+                <button class="nav-item" data-target="tab-llm" type="button">
+                    <span class="nav-icon">🧠</span><span>审核 LLM</span>
+                </button>
+            </nav>
+            <div class="save-panel">
+                <div class="save-state" id="save-state">配置已同步</div>
+                <button data-action="save-config" class="btn-primary" type="button">保存更改</button>
+            </div>
+        </aside>
+        <main class="content">
+            <header class="topbar">
+                <div>
+                    <span class="eyebrow">PLUGIN SETTINGS</span>
+                    <h2 id="active-title">OTTO Hub 设置</h2>
+                </div>
+                <div class="status-pill"><span></span>READY</div>
+            </header>
+
+            <section id="tab-otto" class="tab-pane active" data-title="OTTO Hub 设置">
+                <div class="page-grid">
+                    <article class="card">
+                        <div class="card-header">
+                            <h3>OTTO Hub 账号设置</h3>
+                            <p>登录 OTTO Hub 获取审核权限，需要审核员账号。</p>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group full-width">
+                                <label for="otto_base_url">API 地址</label>
+                                <input id="otto_base_url" type="text" class="input-modern" placeholder="https://api.ottohub.cn" />
+                            </div>
+                            <div class="form-group">
+                                <label for="otto_uid_email">UID / 邮箱</label>
+                                <input id="otto_uid_email" type="text" class="input-modern" placeholder="登录账号" />
+                            </div>
+                            <div class="form-group">
+                                <label for="otto_password">密码</label>
+                                <input id="otto_password" type="password" class="input-modern" placeholder="登录密码" />
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section id="tab-llm" class="tab-pane" data-title="审核 LLM 设置">
+                <div class="page-grid">
+                    <article class="card">
+                        <div class="card-header">
+                            <h3>多模态审核模型</h3>
+                            <p>配置用于内容审核的多模态 LLM，需要支持图片理解能力。</p>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group full-width">
+                                <label for="llm_base_url">接口地址</label>
+                                <input id="llm_base_url" type="text" class="input-modern" placeholder="例如 https://api.openai.com/v1" />
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="llm_api_key">API Key</label>
+                                <input id="llm_api_key" type="password" class="input-modern" placeholder="sk-..." />
+                            </div>
+                            <div class="form-group">
+                                <label for="llm_model">模型名</label>
+                                <input id="llm_model" type="text" class="input-modern" placeholder="gpt-4o" />
+                            </div>
+                            <div class="form-group">
+                                <label for="llm_timeout">超时（秒）</label>
+                                <input id="llm_timeout" type="number" class="input-modern" value="60" min="10" />
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="card">
+                        <div class="card-header">
+                            <h3>审核策略</h3>
+                            <p>合规内容直接通过，违规则提示人工复核。</p>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-group full-width">
+                                <label class="toggle-row">
+                                    <input id="auto_execute" type="checkbox" checked />
+                                    <span class="toggle-slider"></span>
+                                    <span>自动执行通过操作</span>
+                                </label>
+                                <p class="field-hint">开启后，AI 判定内容合规时会自动调用 approve 接口通过审核。</p>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="./app.js"></script>
+</body>
+</html>

@@ -9,7 +9,12 @@ OTTO 审核助手插件 - 主逻辑。
 5. 合规 → 自动通过；不合规 → 提示人工复核
 """
 
-from typing import Any, AsyncGenerator, Optional
+import json
+import os
+import uuid
+from typing import Any, AsyncGenerator, Dict, Optional
+
+from quart import jsonify, request
 
 try:
     from astrbot.api.star import Context, Star, register
@@ -22,6 +27,12 @@ except ImportError:
     from astrbot.api.event.components import Plain
     from astrbot.api import llm_tool
     from astrbot.api.utils import logger
+
+try:
+    from astrbot.core.utils.astrbot_path import get_astrbot_data_path
+except Exception:
+    def get_astrbot_data_path() -> str:
+        return os.path.join(os.getcwd(), "data")
 
 from .models import PluginConfig, CONTENT_TYPES, CONTENT_TYPE_MAP
 from .core.auth import AuthManager, AuthError
@@ -37,11 +48,102 @@ PLUGIN_VERSION = "1.0.0"
 class OttoAuditPlugin(Star):
     def __init__(self, context: Context, config: Optional[dict] = None):
         super().__init__(context)
-        self.plugin_config = PluginConfig.from_dict(config if isinstance(config, dict) else {})
+        base_data_dir = str(get_astrbot_data_path())
+        self.data_dir = os.path.join(base_data_dir, "plugin_data", PLUGIN_NAME)
+        os.makedirs(self.data_dir, exist_ok=True)
+        self.config_path = os.path.join(self.data_dir, "otto_audit_config.json")
+
+        plugin_config = PluginConfig.from_dict(
+            self._load_merged_config(config if isinstance(config, dict) else {})
+        )
+        self.plugin_config = plugin_config
         self.auth = AuthManager(self.plugin_config.otto_base_url)
         self.api = ModerationClient(self.plugin_config.otto_base_url, self.auth)
         self.auditor = Auditor(self.plugin_config)
+
+        self.context.register_web_api(
+            f"/{PLUGIN_NAME}/get_config",
+            self.get_config_handler,
+            ["GET"],
+            "获取 OTTO 审核助手配置",
+        )
+        self.context.register_web_api(
+            f"/{PLUGIN_NAME}/save_config",
+            self.save_config_handler,
+            ["POST"],
+            "保存 OTTO 审核助手配置",
+        )
+
         logger.info(f"[{PLUGIN_NAME}] 插件初始化完成")
+
+    def _load_merged_config(self, native_config: Dict[str, Any]) -> Dict[str, Any]:
+        merged = {}
+        if native_config:
+            merged.update(native_config)
+        if os.path.exists(self.config_path):
+            try:
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    persisted = json.load(f)
+                if isinstance(persisted, dict):
+                    persisted.update({k: v for k, v in merged.items() if v})
+                    merged = persisted
+            except Exception as exc:
+                logger.error(f"[{PLUGIN_NAME}] 读取持久化配置失败: {exc}")
+        return merged
+
+    def _persist_config(self) -> None:
+        os.makedirs(self.data_dir, exist_ok=True)
+        tmp_path = f"{self.config_path}.{uuid.uuid4().hex}.tmp"
+        try:
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "otto_base_url": self.plugin_config.otto_base_url,
+                    "otto_uid_email": self.plugin_config.otto_uid_email,
+                    "otto_password": self.plugin_config.otto_password,
+                    "llm_base_url": self.plugin_config.llm_base_url,
+                    "llm_api_key": self.plugin_config.llm_api_key,
+                    "llm_model": self.plugin_config.llm_model,
+                    "llm_timeout": self.plugin_config.llm_timeout,
+                    "auto_execute": self.plugin_config.auto_execute,
+                }, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, self.config_path)
+        except Exception as exc:
+            logger.error(f"[{PLUGIN_NAME}] 保存配置失败: {exc}")
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except OSError:
+                pass
+
+    def _config_for_page(self) -> Dict[str, Any]:
+        return {
+            "otto_base_url": self.plugin_config.otto_base_url,
+            "otto_uid_email": self.plugin_config.otto_uid_email,
+            "otto_password": self.plugin_config.otto_password,
+            "llm_base_url": self.plugin_config.llm_base_url,
+            "llm_api_key": self.plugin_config.llm_api_key,
+            "llm_model": self.plugin_config.llm_model,
+            "llm_timeout": self.plugin_config.llm_timeout,
+            "auto_execute": self.plugin_config.auto_execute,
+        }
+
+    async def get_config_handler(self):
+        return jsonify(self._config_for_page())
+
+    async def save_config_handler(self):
+        new_config = await request.get_json(silent=True)
+        if not isinstance(new_config, dict):
+            return jsonify({"success": False, "message": "配置格式错误"}), 400
+
+        self.plugin_config = PluginConfig.from_dict(new_config)
+        self.auth = AuthManager(self.plugin_config.otto_base_url)
+        self.api = ModerationClient(self.plugin_config.otto_base_url, self.auth)
+        self.auditor = Auditor(self.plugin_config)
+        self._persist_config()
+        logger.info(f"[{PLUGIN_NAME}] 配置已保存并热重载")
+        return jsonify({"success": True, "message": "配置已保存"})
+
+    # ========== Core Logic ==========
 
     async def _ensure_authenticated(self) -> str:
         return await self.auth.ensure_login(
