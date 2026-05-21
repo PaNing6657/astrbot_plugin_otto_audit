@@ -20,7 +20,7 @@
   "llm_base_url": {
     "description": "审核 LLM 接口地址",
     "type": "string",
-    "hint": "多模态 LLM 的 API 地址，例如 https://api.openai.com/v1",
+    "hint": "OpenAI 兼容: https://api.openai.com/v1 ; 豆包 Ark: https://ark.cn-beijing.volces.com/api/v3",
     "default": ""
   },
   "llm_api_key": {

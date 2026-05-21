@@ -142,7 +142,14 @@ class OttoAuditPlugin(Star):
         self.api = ModerationClient(self.plugin_config.otto_base_url, self.auth)
         self.auditor = Auditor(self.plugin_config)
         self._persist_config()
-        logger.info(f"[{PLUGIN_NAME}] 配置已保存并热重载")
+
+        try:
+            if hasattr(self.context, "update_config"):
+                self.context.update_config(new_config)
+        except Exception as exc:
+            logger.warning(f"[{PLUGIN_NAME}] 同步到原生配置失败: {exc}")
+
+        logger.info(f"[{PLUGIN_NAME}] 配置已保存并同步")
         return jsonify({"success": True, "message": "配置已保存"})
 
     # ========== Core Logic ==========
