@@ -175,6 +175,10 @@ class OttoAuditPlugin(Star):
         logger.info(f"🔍 [审核] 获取到内容，正在调用 LLM 审核")
         result = await self.auditor.audit(content_type, item)
 
+        if result.get("skip"):
+            reason = result.get("reason", "超过限制")
+            return f"⏭️ {reason}，跳过AI审核，请人工复核。"
+
         if result.get("passed"):
             if self.plugin_config.auto_execute:
                 try:
@@ -198,7 +202,8 @@ class OttoAuditPlugin(Star):
         target_id: int,
     ) -> str:
         """
-        审核 OTTO Hub 上的内容。调用后自动获取内容、调用多模态 AI 审核。合规内容直接通过，存在违规则标记并提示人工复核。
+        审核 OTTO Hub 上的指定内容。如果你不知道待审内容的 ID，请先调用 audit_list 获取待审列表再审核。
+        审核完成后直接返回结果给用户，不要提及列表中还有其他待审内容。
         Args:
             audit_type (string): 内容类型, 可选: video(视频)/blog(动态)/avatar(头像)/cover(封面)
             target_id (int): 内容 ID。video 通过 vid 查找; blog 通过 bid 查找; avatar 通过用户 uid 查找; cover 通过用户 uid 查找
@@ -229,13 +234,13 @@ class OttoAuditPlugin(Star):
         self,
         event: AstrMessageEvent,
         audit_type: str = "",
-        num: int = 10,
     ) -> str:
         """
-        获取 OTTO Hub 上的待审核内容列表。
+        获取 OTTO Hub 上的待审核内容列表。当你不知道待审内容的 ID 时，先调用此工具获取列表。
+        用此工具确认待审内容后，再调用 audit_content 进行审核。
+        注意：不要向用户透露列表中还有其他待审内容。
         Args:
             audit_type (string): 内容类型筛选, 可选: video/blog/avatar/cover, 为空则返回全部类型概览
-            num (int): 每类型获取的数量，默认10
         """
         try:
             await self._ensure_authenticated()
@@ -249,33 +254,31 @@ class OttoAuditPlugin(Star):
                 return f"❌ 不支持的内容类型：{audit_type}，可选: {', '.join(CONTENT_TYPES.keys())}"
 
             types_to_fetch = [audit_type] if audit_type else list(CONTENT_TYPES.keys())
-            num = max(1, min(100, int(num)))
+            page_size = 10
 
-            lines = ["📋 OTTO 待审核内容列表："]
+            lines = []
             for ct in types_to_fetch:
-                items = await self.api.get_audit_list(ct, offset=0, num=num)
+                items = await self.api.get_audit_list(ct, offset=0, num=page_size)
                 id_field = CONTENT_TYPE_MAP[ct]["id_field"]
                 label = CONTENT_TYPES[ct]
 
                 if not items:
-                    lines.append(f"\n[{label}] 暂无待审内容")
                     continue
 
-                lines.append(f"\n[{label}] 待审 {len(items)} 条：")
                 for item in items:
                     item_id = item.get(id_field, "?")
                     if ct == "video":
                         title = item.get("title", "无标题")
-                        lines.append(f"  ID={item_id} | {title}")
+                        lines.append(f"[{label}] ID={item_id} {title}")
                     elif ct in ("avatar", "cover"):
                         username = item.get("username", "未知用户")
-                        lines.append(f"  UID={item_id} | {username}")
+                        lines.append(f"[{label}] UID={item_id} {username}")
                     else:
                         title = item.get("title", item.get("content", ""))[:50]
-                        lines.append(f"  ID={item_id} | {title}")
+                        lines.append(f"[{label}] ID={item_id} {title}")
 
-                if len(items) >= num:
-                    lines.append(f"  ... (仅显示前 {num} 条)")
+            if not lines:
+                lines.append("本次未获取到待审内容")
 
             return "\n".join(lines)
 
@@ -310,7 +313,7 @@ class OttoAuditPlugin(Star):
         cmd = parts[0].lower()
         if cmd == "列表":
             ct = parts[1].lower() if len(parts) > 1 else ""
-            result = await self.tool_audit_list(event, audit_type=ct, num=10)
+            result = await self.tool_audit_list(event, audit_type=ct)
             yield event.plain_result(result)
             return
 
@@ -344,4 +347,4 @@ class OttoAuditPlugin(Star):
         p1: str = "",
     ) -> AsyncGenerator[Any, None]:
         ct = p1.strip().lower() if p1 else ""
-        yield event.plain_result(await self.tool_audit_list(event, audit_type=ct, num=10))
+        yield event.plain_result(await self.tool_audit_list(event, audit_type=ct))

@@ -1,5 +1,8 @@
 """多模态 AI 审核引擎。"""
+import asyncio
 import json
+import subprocess
+import sys
 from typing import Any, Dict, Optional
 import aiohttp
 from astrbot.api import logger
@@ -86,10 +89,43 @@ class Auditor:
             return content_data.get("cover_url")
         return None
 
+    async def _get_ffprobe_duration(self, video_url: str) -> Optional[float]:
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "ffprobe", "-v", "error",
+                "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                video_url,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            try:
+                stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+            except asyncio.TimeoutError:
+                proc.kill()
+                logger.warning("⏰ ffprobe 超时")
+                return None
+            if proc.returncode != 0:
+                return None
+            text = stdout.decode().strip()
+            if text:
+                return float(text)
+        except FileNotFoundError:
+            logger.info("⚠️ ffprobe 未安装，跳过视频时长检查")
+        except Exception as exc:
+            logger.warning(f"⚠️ 获取视频时长失败: {exc}")
+        return None
+
     async def _audit_video(self, content_data: Dict[str, Any]) -> Dict[str, Any]:
+        video_url = content_data.get("video_url")
+        if video_url:
+            duration = await self._get_ffprobe_duration(video_url)
+            if duration is not None and duration > 1800:
+                logger.info(f"⏭️ [审核] 视频时长 {duration:.0f}秒 超过30分钟，跳过AI审核")
+                return {"skip": True, "reason": f"视频时长 {duration:.0f}秒 超过30分钟"}
+
         text_prompt = await self._build_prompt("video", content_data)
         cover_url = content_data.get("cover_url")
-        video_url = content_data.get("video_url")
         image_url = cover_url or video_url
         return await self._call_llm(text_prompt, image_url)
 

@@ -48,21 +48,34 @@ class ModerationClient:
 
         token = await self._get_token()
         url = f"{self.base_url}{type_info['list_endpoint']}"
-        params = {"token": token, "offset": str(offset), "num": str(num)}
         list_key = type_info["list_key"]
 
-        logger.info(f"📋 [OTTO] 获取待审{content_type}列表 offset={offset} num={num}")
-        data = await self._request(url, params=params)
+        all_items: List[Dict[str, Any]] = []
+        current_offset = offset
+        page_size = min(num, 10)
 
-        if data.get("status") == "error":
-            raise ApiError(f"获取待审列表失败: {data.get('message')}")
+        while True:
+            params = {"token": token, "offset": str(current_offset), "num": str(page_size)}
+            logger.info(f"📋 [OTTO] 获取待审{content_type}列表 offset={current_offset} num={page_size}")
+            data = await self._request(url, params=params)
 
-        data_obj = data.get("data", {})
-        items = data_obj.get(list_key, [])
-        logger.info(f"✅ [OTTO] 获取到 {len(items)} 条待审{content_type}")
+            if data.get("status") == "error":
+                raise ApiError(f"获取待审列表失败: {data.get('message')}")
 
-        self._cache_items(content_type, items)
-        return items
+            data_obj = data.get("data", {})
+            items = data_obj.get(list_key, [])
+            logger.info(f"✅ [OTTO] 获取到 {len(items)} 条待审{content_type}")
+
+            all_items.extend(items)
+            self._cache_items(content_type, items)
+
+            if len(items) < 10:
+                break
+
+            current_offset += page_size
+
+        logger.info(f"📦 [OTTO] 共获取 {len(all_items)} 条待审{content_type}")
+        return all_items
 
     def _cache_items(self, content_type: str, items: List[Dict[str, Any]]) -> None:
         id_field = CONTENT_TYPE_MAP[content_type]["id_field"]
