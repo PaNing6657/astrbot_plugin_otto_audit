@@ -185,23 +185,23 @@ class OttoAuditPlugin(Star):
     async def tool_audit_content(
         self,
         event: AstrMessageEvent,
-        content_type: str,
-        content_id: int,
+        audit_type: str,
+        target_id: int,
     ) -> str:
         """
         审核 OTTO Hub 上的内容。调用后自动获取内容、调用多模态 AI 审核。合规内容直接通过，存在违规则标记并提示人工复核。
         Args:
-            content_type: 内容类型, 可选: video(视频)/blog(动态)/avatar(头像)/cover(封面)
-            content_id: 内容 ID。video 通过 vid 查找; blog 通过 bid 查找; avatar 通过用户 uid 查找; cover 通过用户 uid 查找
+            audit_type: 内容类型, 可选: video(视频)/blog(动态)/avatar(头像)/cover(封面)
+            target_id: 内容 ID。video 通过 vid 查找; blog 通过 bid 查找; avatar 通过用户 uid 查找; cover 通过用户 uid 查找
         """
         try:
-            content_type = str(content_type).strip().lower()
-            content_id = int(content_id)
+            audit_type = str(audit_type).strip().lower()
+            target_id = int(target_id)
 
-            if content_type not in CONTENT_TYPES:
-                return f"❌ 不支持的内容类型：{content_type}，可选: {', '.join(CONTENT_TYPES.keys())}"
+            if audit_type not in CONTENT_TYPES:
+                return f"❌ 不支持的内容类型：{audit_type}，可选: {', '.join(CONTENT_TYPES.keys())}"
 
-            return await self._audit_and_act(content_type, content_id)
+            return await self._audit_and_act(audit_type, target_id)
 
         except AuthError as e:
             return f"❌ 认证失败: {e}"
@@ -219,13 +219,13 @@ class OttoAuditPlugin(Star):
     async def tool_audit_list(
         self,
         event: AstrMessageEvent,
-        content_type: str = "",
+        audit_type: str = "",
         num: int = 10,
     ) -> str:
         """
         获取 OTTO Hub 上的待审核内容列表。
         Args:
-            content_type: 内容类型筛选, 可选: video/blog/avatar/cover, 为空则返回全部类型概览
+            audit_type: 内容类型筛选, 可选: video/blog/avatar/cover, 为空则返回全部类型概览
             num: 每类型获取的数量，默认10
         """
         try:
@@ -234,12 +234,12 @@ class OttoAuditPlugin(Star):
             if not self.auth.is_audit:
                 return "❌ 当前账号不是审核员，无法查看待审列表"
 
-            content_type = str(content_type).strip().lower() if content_type else ""
+            audit_type = str(audit_type).strip().lower() if audit_type else ""
 
-            if content_type and content_type not in CONTENT_TYPES:
-                return f"❌ 不支持的内容类型：{content_type}，可选: {', '.join(CONTENT_TYPES.keys())}"
+            if audit_type and audit_type not in CONTENT_TYPES:
+                return f"❌ 不支持的内容类型：{audit_type}，可选: {', '.join(CONTENT_TYPES.keys())}"
 
-            types_to_fetch = [content_type] if content_type else list(CONTENT_TYPES.keys())
+            types_to_fetch = [audit_type] if audit_type else list(CONTENT_TYPES.keys())
             num = max(1, min(100, int(num)))
 
             lines = ["📋 OTTO 待审核内容列表："]
@@ -301,7 +301,7 @@ class OttoAuditPlugin(Star):
         cmd = parts[0].lower()
         if cmd == "列表":
             ct = parts[1].lower() if len(parts) > 1 else ""
-            result = await self.tool_audit_list(event, content_type=ct, num=10)
+            result = await self.tool_audit_list(event, audit_type=ct, num=10)
             yield event.plain_result(result)
             return
 
@@ -335,4 +335,4 @@ class OttoAuditPlugin(Star):
         p1: str = "",
     ) -> AsyncGenerator[Any, None]:
         ct = p1.strip().lower() if p1 else ""
-        yield event.plain_result(await self.tool_audit_list(event, content_type=ct, num=10))
+        yield event.plain_result(await self.tool_audit_list(event, audit_type=ct, num=10))
