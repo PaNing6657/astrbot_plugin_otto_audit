@@ -1,0 +1,49 @@
+{
+  "otto_base_url": {
+    "description": "OTTO Hub API 地址",
+    "type": "string",
+    "hint": "默认 https://api.ottohub.cn",
+    "default": "https://api.ottohub.cn"
+  },
+  "otto_uid_email": {
+    "description": "登录 UID 或邮箱",
+    "type": "string",
+    "hint": "用于登录 OTTO Hub 获取 token",
+    "default": ""
+  },
+  "otto_password": {
+    "description": "登录密码",
+    "type": "string",
+    "hint": "OTTO Hub 账号密码",
+    "default": ""
+  },
+  "llm_base_url": {
+    "description": "审核 LLM 接口地址",
+    "type": "string",
+    "hint": "多模态 LLM 的 API 地址，例如 https://api.openai.com/v1",
+    "default": ""
+  },
+  "llm_api_key": {
+    "description": "审核 LLM API Key",
+    "type": "string",
+    "hint": "调用多模态 LLM 的 API Key",
+    "default": ""
+  },
+  "llm_model": {
+    "description": "审核 LLM 模型名",
+    "type": "string",
+    "hint": "支持多模态的模型，例如 gpt-4o、gemini-2.0-flash",
+    "default": "gpt-4o"
+  },
+  "llm_timeout": {
+    "description": "审核 LLM 超时（秒）",
+    "type": "int",
+    "default": 60
+  },
+  "auto_execute": {
+    "description": "自动执行通过操作",
+    "type": "bool",
+    "hint": "开启后 AI 判定内容合规时自动调用 approve 接口",
+    "default": true
+  }
+}
