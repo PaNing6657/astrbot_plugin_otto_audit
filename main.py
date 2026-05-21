@@ -191,8 +191,8 @@ class OttoAuditPlugin(Star):
         """
         审核 OTTO Hub 上的内容。调用后自动获取内容、调用多模态 AI 审核。合规内容直接通过，存在违规则标记并提示人工复核。
         Args:
-            audit_type: 内容类型, 可选: video(视频)/blog(动态)/avatar(头像)/cover(封面)
-            target_id: 内容 ID。video 通过 vid 查找; blog 通过 bid 查找; avatar 通过用户 uid 查找; cover 通过用户 uid 查找
+            audit_type (string): 内容类型, 可选: video(视频)/blog(动态)/avatar(头像)/cover(封面)
+            target_id (int): 内容 ID。video 通过 vid 查找; blog 通过 bid 查找; avatar 通过用户 uid 查找; cover 通过用户 uid 查找
         """
         try:
             audit_type = str(audit_type).strip().lower()
@@ -225,8 +225,8 @@ class OttoAuditPlugin(Star):
         """
         获取 OTTO Hub 上的待审核内容列表。
         Args:
-            audit_type: 内容类型筛选, 可选: video/blog/avatar/cover, 为空则返回全部类型概览
-            num: 每类型获取的数量，默认10
+            audit_type (string): 内容类型筛选, 可选: video/blog/avatar/cover, 为空则返回全部类型概览
+            num (int): 每类型获取的数量，默认10
         """
         try:
             await self._ensure_authenticated()
