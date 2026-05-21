@@ -106,6 +106,12 @@ class Auditor:
         if not self.config.llm_base_url or not self.config.llm_api_key:
             raise AuditError("LLM 配置不完整，请配置接口地址、API Key 和模型")
 
+        api_type = self.config.llm_api_type
+        if api_type == "ark":
+            return await self._call_ark(text_prompt, image_url)
+        return await self._call_openai(text_prompt, image_url)
+
+    async def _call_openai(self, text_prompt: str, image_url: Optional[str] = None) -> Dict[str, Any]:
         base_url = self.config.llm_base_url.rstrip("/")
         url = f"{base_url}/chat/completions"
         if base_url.endswith("/v1"):
@@ -136,7 +142,7 @@ class Auditor:
             "Authorization": f"Bearer {self.config.llm_api_key}",
         }
 
-        logger.info(f"🤖 [审核 LLM] 正在调用 {self.config.llm_model} 进行审核")
+        logger.info(f"🤖 [审核 LLM] 正在调用 {self.config.llm_model} (openai) 进行审核")
         timeout = aiohttp.ClientTimeout(total=self.config.llm_timeout)
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload, headers=headers, timeout=timeout) as resp:
@@ -149,6 +155,67 @@ class Auditor:
         if "choices" in result and result["choices"]:
             content = result["choices"][0].get("message", {}).get("content", "")
 
+        return self._parse_response(content)
+
+    async def _call_ark(self, text_prompt: str, image_url: Optional[str] = None) -> Dict[str, Any]:
+        base_url = self.config.llm_base_url.rstrip("/")
+        url = f"{base_url}/responses"
+
+        full_text = AUDIT_SYSTEM_PROMPT + "\n\n" + text_prompt
+
+        user_content = []
+        if image_url:
+            user_content.append({
+                "type": "input_image",
+                "image_url": image_url,
+            })
+        user_content.append({
+            "type": "input_text",
+            "text": full_text,
+        })
+
+        payload = {
+            "model": self.config.llm_model,
+            "input": [
+                {"role": "user", "content": user_content},
+            ],
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.config.llm_api_key}",
+        }
+
+        logger.info(f"🤖 [审核 LLM] 正在调用 {self.config.llm_model} (ark) 进行审核")
+        timeout = aiohttp.ClientTimeout(total=self.config.llm_timeout)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, headers=headers, timeout=timeout) as resp:
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    raise AuditError(f"LLM 调用失败 HTTP {resp.status}: {error_text}")
+                result = await resp.json()
+
+        content = ""
+        output = result.get("output", [])
+        if isinstance(output, list) and output:
+            for item in output:
+                if isinstance(item, dict):
+                    item_content = item.get("content", "")
+                    if isinstance(item_content, list):
+                        for block in item_content:
+                            if isinstance(block, dict) and block.get("type") == "output_text":
+                                content += block.get("text", "")
+                    elif isinstance(item_content, str):
+                        content += item_content
+
+        if not content:
+            output_text = result.get("output_text", "")
+            if isinstance(output_text, str):
+                content = output_text
+
+        return self._parse_response(content)
+
+    def _parse_response(self, content: str) -> Dict[str, Any]:
         if not content:
             raise AuditError("LLM 返回内容为空")
 

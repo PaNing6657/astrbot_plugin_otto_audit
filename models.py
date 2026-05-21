@@ -50,6 +50,7 @@ class PluginConfig:
     llm_api_key: str = ""
     llm_model: str = "gpt-4o"
     llm_timeout: int = 60
+    llm_api_type: str = "openai"
     auto_execute: bool = True
 
     @classmethod
@@ -64,5 +65,6 @@ class PluginConfig:
             llm_api_key=str(config.get("llm_api_key", "")),
             llm_model=str(config.get("llm_model", "gpt-4o")),
             llm_timeout=int(config.get("llm_timeout", 60)),
+            llm_api_type=str(config.get("llm_api_type", "openai")),
             auto_execute=bool(config.get("auto_execute", True)),
         )

@@ -5,6 +5,7 @@ const mockConfig = {
     llm_base_url: "",
     llm_api_key: "",
     llm_model: "gpt-4o",
+    llm_api_type: "openai",
     llm_timeout: 60,
     auto_execute: true,
 };
@@ -27,6 +28,7 @@ const fieldMap = {
     llm_base_url: "llm_base_url",
     llm_api_key: "llm_api_key",
     llm_model: "llm_model",
+    llm_api_type: "llm_api_type",
     llm_timeout: "llm_timeout",
     auto_execute: "auto_execute",
 };
@@ -40,6 +42,8 @@ function bindInput(id, key) {
         el.addEventListener("change", () => { state[key] = el.checked; markDirty(); });
     } else if (el.type === "number") {
         el.addEventListener("input", () => { state[key] = parseInt(el.value) || 0; markDirty(); });
+    } else if (el.tagName === "SELECT") {
+        el.addEventListener("change", () => { state[key] = el.value; markDirty(); });
     } else {
         el.addEventListener("input", () => { state[key] = el.value; markDirty(); });
     }
@@ -51,6 +55,7 @@ function renderState() {
         if (!el) continue;
         if (el.type === "checkbox") el.checked = !!state[key];
         else if (el.type === "number") el.value = state[key];
+        else if (el.tagName === "SELECT") el.value = state[key] || "openai";
         else el.value = state[key] || "";
     }
 }

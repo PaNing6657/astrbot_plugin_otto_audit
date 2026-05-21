@@ -35,6 +35,13 @@
     "hint": "支持多模态的模型，例如 gpt-4o、gemini-2.0-flash",
     "default": "gpt-4o"
   },
+  "llm_api_type": {
+    "description": "审核 LLM 接口类型",
+    "type": "string",
+    "options": ["openai", "ark"],
+    "hint": "openai 为 /v1/chat/completions 协议；ark 为豆包 /api/v3/responses 协议",
+    "default": "openai"
+  },
   "llm_timeout": {
     "description": "审核 LLM 超时（秒）",
     "type": "int",

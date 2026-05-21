@@ -103,6 +103,7 @@ class OttoAuditPlugin(Star):
                     "llm_base_url": self.plugin_config.llm_base_url,
                     "llm_api_key": self.plugin_config.llm_api_key,
                     "llm_model": self.plugin_config.llm_model,
+                    "llm_api_type": self.plugin_config.llm_api_type,
                     "llm_timeout": self.plugin_config.llm_timeout,
                     "auto_execute": self.plugin_config.auto_execute,
                 }, f, ensure_ascii=False, indent=2)
@@ -123,6 +124,7 @@ class OttoAuditPlugin(Star):
             "llm_base_url": self.plugin_config.llm_base_url,
             "llm_api_key": self.plugin_config.llm_api_key,
             "llm_model": self.plugin_config.llm_model,
+            "llm_api_type": self.plugin_config.llm_api_type,
             "llm_timeout": self.plugin_config.llm_timeout,
             "auto_execute": self.plugin_config.auto_execute,
         }
