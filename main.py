@@ -52,6 +52,8 @@ class OttoAuditPlugin(Star):
         self.data_dir = os.path.join(base_data_dir, "plugin_data", PLUGIN_NAME)
         os.makedirs(self.data_dir, exist_ok=True)
         self.config_path = os.path.join(self.data_dir, "otto_audit_config.json")
+        self.history_path = os.path.join(self.data_dir, "otto_audit_history.json")
+        self._audit_history = self._load_audit_history()
 
         plugin_config = PluginConfig.from_dict(
             self._load_merged_config(config if isinstance(config, dict) else {})
@@ -116,6 +118,49 @@ class OttoAuditPlugin(Star):
             except OSError:
                 pass
 
+    def _load_audit_history(self) -> Dict[str, Dict[str, Any]]:
+        if not os.path.exists(self.history_path):
+            return {}
+        try:
+            with open(self.history_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except Exception as exc:
+            logger.error(f"[{PLUGIN_NAME}] 读取审核历史失败: {exc}")
+            return {}
+
+    def _save_audit_history(self) -> None:
+        os.makedirs(self.data_dir, exist_ok=True)
+        tmp_path = f"{self.history_path}.{uuid.uuid4().hex}.tmp"
+        try:
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(self._audit_history, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, self.history_path)
+        except Exception as exc:
+            logger.error(f"[{PLUGIN_NAME}] 保存审核历史失败: {exc}")
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except OSError:
+                pass
+
+    def _check_audit_history(self, audit_type: str, target_id: int) -> Optional[str]:
+        key = f"{audit_type}:{target_id}"
+        record = self._audit_history.get(key)
+        if record:
+            return record.get("result", "已审核过")
+        return None
+
+    def _record_audit(self, audit_type: str, target_id: int, result: str) -> None:
+        key = f"{audit_type}:{target_id}"
+        self._audit_history[key] = {
+            "type": audit_type,
+            "id": target_id,
+            "result": result,
+            "time": int(__import__("time").time()),
+        }
+        self._save_audit_history()
+
     def _config_for_page(self) -> Dict[str, Any]:
         return {
             "otto_base_url": self.plugin_config.otto_base_url,
@@ -161,6 +206,10 @@ class OttoAuditPlugin(Star):
         )
 
     async def _audit_and_act(self, content_type: str, content_id: int) -> str:
+        history = self._check_audit_history(content_type, content_id)
+        if history:
+            return f"ℹ️ 该{CONTENT_TYPES.get(content_type, content_type)} (ID={content_id}) 之前已审核：{history}"
+
         await self._ensure_authenticated()
 
         if not self.auth.is_audit:
@@ -177,20 +226,30 @@ class OttoAuditPlugin(Star):
 
         if result.get("skip"):
             reason = result.get("reason", "超过限制")
-            return f"⏭️ {reason}，跳过AI审核，请人工复核。"
+            msg = f"⏭️ {reason}，跳过AI审核，请人工复核。"
+            self._record_audit(content_type, content_id, msg)
+            return msg
 
         if result.get("passed"):
             if self.plugin_config.auto_execute:
                 try:
                     await self.api.approve(content_type, content_id)
-                    return f"✅ 审核通过。AI 判定内容合规（{result.get('reason', '')}），已自动通过审核。"
+                    msg = f"✅ 审核通过。AI 判定内容合规（{result.get('reason', '')}），已自动通过审核。"
+                    self._record_audit(content_type, content_id, msg)
+                    return msg
                 except ApiError as e:
-                    return f"✅ AI 判定内容合规，但自动通过操作失败: {e}"
+                    msg = f"✅ AI 判定内容合规，但自动通过操作失败: {e}"
+                    self._record_audit(content_type, content_id, msg)
+                    return msg
             else:
-                return f"✅ AI 判定内容合规，等待手动处理。"
+                msg = f"✅ AI 判定内容合规，等待手动处理。"
+                self._record_audit(content_type, content_id, msg)
+                return msg
         else:
             reason = result.get("reason", "存在违规")
-            return f"⚠️ AI 认为存在违规内容：{reason}。请耐心等待人工复核。"
+            msg = f"⚠️ AI 认为存在违规内容：{reason}。请耐心等待人工复核。"
+            self._record_audit(content_type, content_id, msg)
+            return msg
 
     # ========== LLM Tools ==========
 
