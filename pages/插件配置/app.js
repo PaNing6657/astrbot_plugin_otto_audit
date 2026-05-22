@@ -14,7 +14,7 @@ const bridge = window.AstrBotPluginPage || {
     ready: async () => ({}),
     apiGet: async () => JSON.parse(JSON.stringify(mockConfig)),
     apiPost: async (name, payload) => {
-        console.info(`[OTTO Audit preview] ${name}`, payload);
+        console.info(`[OTTOhub preview] ${name}`, payload);
         return { success: true };
     }
 };
@@ -71,7 +71,7 @@ async function loadConfig() {
             state = { ...mockConfig, ...data };
         }
     } catch (e) {
-        console.warn("[OTTO Audit] 使用默认配置", e);
+        console.warn("[OTTOhub] 使用默认配置", e);
     }
     renderState();
 }

@@ -1,1 +1,1 @@
-"""AstrBot OTTO 审核助手插件。"""
+"""AstrBot OTTOhub 审核助手插件。"""

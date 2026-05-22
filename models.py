@@ -1,5 +1,5 @@
 """
-OTTO 审核助手 - 数据模型。
+OTTOhub 审核助手 - 数据模型。
 """
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional

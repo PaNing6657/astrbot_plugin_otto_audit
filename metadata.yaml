@@ -1,7 +1,7 @@
 name: astrbot_plugin_otto_audit
-display_name: OTTO 审核助手
-desc: 对接 OTTO Hub 审核 API，利用多模态 AI 自动审核视频/动态/头像/封面内容。合规自动通过，违规提示人工复核。
+display_name: OTTOhub 审核助手
+desc: 对接 OTTOhub 审核 API，利用多模态 AI 自动审核视频/动态/头像/封面内容。合规自动通过，违规提示人工复核。
 help: 发送 /审核 查看用法
 version: 1.0.0
-author: OTTO
+author: OTTOhub
 repo: ""

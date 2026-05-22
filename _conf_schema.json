@@ -1,6 +1,6 @@
 {
   "otto_base_url": {
-    "description": "OTTO Hub API 地址",
+    "description": "OTTOhub API 地址",
     "type": "string",
     "hint": "默认 https://api.ottohub.cn",
     "default": "https://api.ottohub.cn"
@@ -8,13 +8,13 @@
   "otto_uid_email": {
     "description": "登录 UID 或邮箱",
     "type": "string",
-    "hint": "用于登录 OTTO Hub 获取 token",
+    "hint": "用于登录 OTTOhub 获取 token",
     "default": ""
   },
   "otto_password": {
     "description": "登录密码",
     "type": "string",
-    "hint": "OTTO Hub 账号密码",
+    "hint": "OTTOhub 账号密码",
     "default": ""
   },
   "llm_base_url": {

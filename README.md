@@ -1,11 +1,11 @@
-# OTTO 审核助手
+# OTTOhub 审核助手
 
-对接 OTTO Hub 审核 API，利用多模态 AI 自动审核视频、动态、头像、封面内容。
+对接 OTTOhub 审核 API，利用多模态 AI 自动审核视频、动态、头像、封面内容。
 
 ## 工作流程
 
 ```
-用户 → AI → 插件 → OTTO Hub API (获取内容) → 多模态 LLM (审核) → 合规则自动通过，违规则提示人工复核
+用户 → AI → 插件 → OTTOhub API (获取内容) → 多模态 LLM (审核) → 合规则自动通过，违规则提示人工复核
 ```
 
 ## 功能
@@ -21,8 +21,8 @@
 
 | 配置项 | 说明 |
 |--------|------|
-| OTTO Hub API 地址 | 默认 `https://api.ottohub.cn` |
-| UID / 邮箱 | OTTO Hub 登录账号（需审核员权限） |
+| OTTOhub API 地址 | 默认 `https://api.ottohub.cn` |
+| UID / 邮箱 | OTTOhub 登录账号（需审核员权限） |
 | 密码 | 登录密码 |
 | 审核 LLM 接口地址 | 多模态模型 API 地址 |
 | 审核 LLM API Key | API 密钥 |

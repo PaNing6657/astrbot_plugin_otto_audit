@@ -1,4 +1,4 @@
-"""OTTO Hub Moderation API 客户端。"""
+"""OTTOhub Moderation API 客户端。"""
 import time
 from typing import Any, Dict, List, Optional
 import aiohttp

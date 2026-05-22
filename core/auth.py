@@ -1,4 +1,4 @@
-"""OTTO Hub 登录认证与 token 管理。"""
+"""OTTOhub 登录认证与 token 管理。"""
 import time
 from typing import Optional, Tuple
 import aiohttp
