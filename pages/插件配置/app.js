@@ -5,7 +5,8 @@ const TYPE_LABELS = {
     cover: "封面",
 };
 
-let allItems = [];
+let allData = null;
+let currentFilter = "";
 
 function $(id) { return document.getElementById(id); }
 
@@ -28,26 +29,33 @@ function resultClass(result) {
 }
 
 function render(data) {
+    allData = data;
     const tbody = $("log-body");
     const empty = $("log-empty");
     const summary = $("log-summary");
 
-    if (!data || !data.success || !data.history || !data.history.length) {
+    const filtered = data && data.history ? (
+        currentFilter ? data.history.filter(i => i.type === currentFilter) : data.history
+    ) : [];
+
+    if (!filtered.length) {
         tbody.innerHTML = "";
         empty.style.display = "block";
-        summary.textContent = "暂无审核记录";
+        summary.textContent = currentFilter
+            ? `暂无${TYPE_LABELS[currentFilter] || currentFilter}审核记录`
+            : "暂无审核记录";
         return;
     }
 
     empty.style.display = "none";
 
-    const items = data.history;
-    const pass = items.filter(i => i.result.includes("✅")).length;
-    const warn = items.filter(i => i.result.includes("⚠️")).length;
-    const skip = items.filter(i => i.result.includes("⏭️")).length;
-    summary.textContent = `共 ${items.length} 条 | ✅ 通过 ${pass} | ⚠️ 违规 ${warn} | ⏭️ 跳过 ${skip}`;
+    const pass = filtered.filter(i => i.result.includes("✅")).length;
+    const warn = filtered.filter(i => i.result.includes("⚠️")).length;
+    const skip = filtered.filter(i => i.result.includes("⏭️")).length;
+    const total = data.history.length;
+    summary.textContent = `共 ${total} 条 | 当前 ${filtered.length} 条 | ✅ 通过 ${pass} | ⚠️ 违规 ${warn} | ⏭️ 跳过 ${skip}`;
 
-    tbody.innerHTML = items.map(item => `
+    tbody.innerHTML = filtered.map(item => `
         <tr class="${resultClass(item.result)}">
             <td class="col-time">${timeStr(item.time)}</td>
             <td class="col-type">${typeLabel(item.type)}</td>
@@ -55,6 +63,14 @@ function render(data) {
             <td class="col-result">${item.result}</td>
         </tr>
     `).join("");
+}
+
+function setFilter(type) {
+    currentFilter = type;
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.type === type);
+    });
+    if (allData) render(allData);
 }
 
 async function loadHistory() {
@@ -66,8 +82,36 @@ async function loadHistory() {
     }
 }
 
+async function refreshHistory() {
+    return new Promise((resolve) => {
+        const old = document.querySelector('script[src*="history_data.js"]');
+        if (old) old.remove();
+        delete window.__OTTO_AUDIT_HISTORY__;
+        const script = document.createElement("script");
+        script.src = `./history_data.js?_t=${Date.now()}`;
+        script.onload = () => {
+            render(window.__OTTO_AUDIT_HISTORY__);
+            resolve();
+        };
+        script.onerror = () => {
+            console.warn("[OTTOhub] 刷新历史数据失败");
+            resolve();
+        };
+        document.body.appendChild(script);
+    });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-    $("btn-refresh").addEventListener("click", loadHistory);
+    $("btn-refresh").addEventListener("click", refreshHistory);
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => setFilter(btn.dataset.type));
+    });
+    loadHistory();
+});
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    $("btn-refresh").addEventListener("click", refreshHistory);
     loadHistory();
 });
 

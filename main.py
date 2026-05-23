@@ -28,6 +28,11 @@ except ImportError:
     from astrbot.api import llm_tool
     from astrbot.api.utils import logger
 
+    from astrbot.core.utils.astrbot_path import get_astrbot_data_path
+except Exception:
+    def get_astrbot_data_path() -> str:
+        return os.path.join(os.getcwd(), "data")
+
 from .models import PluginConfig, CONTENT_TYPES, CONTENT_TYPE_MAP
 from .core.auth import AuthManager, AuthError
 from .core.api_client import ModerationClient, ApiError
@@ -42,8 +47,8 @@ PLUGIN_VERSION = "1.0.0"
 class OttoAuditPlugin(Star):
     def __init__(self, context: Context, config: Optional[dict] = None):
         super().__init__(context)
-        plugin_dir = os.path.dirname(os.path.abspath(__file__))
-        self.data_dir = os.path.join(plugin_dir, "data")
+        base_data_dir = str(get_astrbot_data_path())
+        self.data_dir = os.path.join(base_data_dir, "plugin_data", PLUGIN_NAME)
         os.makedirs(self.data_dir, exist_ok=True)
         self.config_path = os.path.join(self.data_dir, "otto_audit_config.json")
         self.history_path = os.path.join(self.data_dir, "otto_audit_history.json")
@@ -152,7 +157,8 @@ class OttoAuditPlugin(Star):
 
     def _sync_history_js(self) -> None:
         try:
-            pages_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pages", "插件配置")
+            plugin_dir = os.path.dirname(os.path.abspath(__file__))
+            pages_dir = os.path.join(plugin_dir, "pages", "插件配置")
             os.makedirs(pages_dir, exist_ok=True)
             items = []
             for key, record in self._audit_history.items():
