@@ -21,12 +21,18 @@ try:
     from astrbot.api.event import AstrMessageEvent, filter
     from astrbot.api.message_components import Plain
     from astrbot.api import llm_tool, logger
-except Exception:
+except ImportError:
     from astrbot.api.star import Context, Star, register
     from astrbot.api.event import AstrMessageEvent, filter
     from astrbot.api.event.components import Plain
     from astrbot.api import llm_tool
     from astrbot.api.utils import logger
+
+try:
+    from astrbot.core.utils.astrbot_path import get_astrbot_data_path
+except Exception:
+    def get_astrbot_data_path() -> str:
+        return os.path.join(os.getcwd(), "data")
 
 from .models import PluginConfig, CONTENT_TYPES, CONTENT_TYPE_MAP
 from .core.auth import AuthManager, AuthError
@@ -42,14 +48,12 @@ PLUGIN_VERSION = "1.0.0"
 class OttoAuditPlugin(Star):
     def __init__(self, context: Context, config: Optional[dict] = None):
         super().__init__(context)
-        base_data_dir = os.path.join(os.getcwd(), "data")
+        base_data_dir = str(get_astrbot_data_path())
         self.data_dir = os.path.join(base_data_dir, "plugin_data", PLUGIN_NAME)
         os.makedirs(self.data_dir, exist_ok=True)
         self.config_path = os.path.join(self.data_dir, "otto_audit_config.json")
         self.history_path = os.path.join(self.data_dir, "otto_audit_history.json")
         self._audit_history = self._load_audit_history()
-
-        self._sync_history_js()
 
         plugin_config = PluginConfig.from_dict(
             self._load_merged_config(config if isinstance(config, dict) else {})
@@ -70,12 +74,6 @@ class OttoAuditPlugin(Star):
             self.save_config_handler,
             ["POST"],
             "保存 OTTOhub 审核助手配置",
-        )
-        self.context.register_web_api(
-            f"/{PLUGIN_NAME}/get_history",
-            self.get_history_handler,
-            ["GET"],
-            "获取 OTTOhub 审核日志",
         )
 
         logger.info(f"[{PLUGIN_NAME}] 插件初始化完成")
@@ -122,14 +120,11 @@ class OttoAuditPlugin(Star):
 
     def _load_audit_history(self) -> Dict[str, Dict[str, Any]]:
         if not os.path.exists(self.history_path):
-            logger.info(f"[{PLUGIN_NAME}] 审核历史文件不存在: {self.history_path}")
             return {}
         try:
             with open(self.history_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            result = data if isinstance(data, dict) else {}
-            logger.info(f"[{PLUGIN_NAME}] 加载审核历史: {len(result)} 条记录")
-            return result
+            return data if isinstance(data, dict) else {}
         except Exception as exc:
             logger.error(f"[{PLUGIN_NAME}] 读取审核历史失败: {exc}")
             return {}
@@ -148,31 +143,6 @@ class OttoAuditPlugin(Star):
                     os.remove(tmp_path)
             except OSError:
                 pass
-        self._sync_history_js()
-
-    def _sync_history_js(self) -> None:
-        try:
-            plugin_dir = os.path.dirname(os.path.abspath(__file__))
-            pages_dir = os.path.join(plugin_dir, "pages", "插件配置")
-            os.makedirs(pages_dir, exist_ok=True)
-            items = []
-            for key, record in self._audit_history.items():
-                items.append({
-                    "key": key,
-                    "type": record.get("type", ""),
-                    "id": record.get("id", ""),
-                    "result": record.get("result", ""),
-                    "time": record.get("time", 0),
-                })
-            items.sort(key=lambda x: x["time"], reverse=True)
-            js_path = os.path.join(pages_dir, "history_data.js")
-            js_content = f"window.__OTTO_AUDIT_HISTORY__ = {json.dumps({'success': True, 'history': items}, ensure_ascii=False)};"
-            tmp_js = f"{js_path}.{uuid.uuid4().hex}.tmp"
-            with open(tmp_js, "w", encoding="utf-8") as f:
-                f.write(js_content)
-            os.replace(tmp_js, js_path)
-        except Exception as exc:
-            logger.error(f"[{PLUGIN_NAME}] 同步历史 JS 失败: {exc}")
 
     def _check_audit_history(self, audit_type: str, target_id: int) -> Optional[str]:
         key = f"{audit_type}:{target_id}"
@@ -190,7 +160,6 @@ class OttoAuditPlugin(Star):
             "time": int(__import__("time").time()),
         }
         self._save_audit_history()
-        logger.info(f"[{PLUGIN_NAME}] 记录审核历史: {key} -> {result[:50]}")
 
     def _config_for_page(self) -> Dict[str, Any]:
         return {
@@ -227,22 +196,6 @@ class OttoAuditPlugin(Star):
 
         logger.info(f"[{PLUGIN_NAME}] 配置已保存并同步")
         return jsonify({"success": True, "message": "配置已保存"})
-
-    async def get_history_handler(self):
-        history = self._load_audit_history()
-        items = []
-        for key, record in history.items():
-            items.append({
-                "key": key,
-                "type": record.get("type", ""),
-                "id": record.get("id", ""),
-                "result": record.get("result", ""),
-                "time": record.get("time", 0),
-            })
-        items.sort(key=lambda x: x["time"], reverse=True)
-        js_code = f"window.__OTTO_AUDIT_HISTORY__ = {json.dumps({'success': True, 'history': items}, ensure_ascii=False)};"
-        resp = jsonify({"success": True, "history": items})
-        return resp
 
     # ========== Core Logic ==========
 
