@@ -93,7 +93,8 @@ class ModerationClient:
             best_ratio = max(
                 difflib.SequenceMatcher(None, title_clean, c).ratio() for c in candidates
             )
-            if best_ratio >= 0.75:
+            has_full_match = any(title_clean in c for c in candidates)
+            if best_ratio >= 0.75 or has_full_match:
                 matches.append((item, best_ratio))
         if len(matches) == 1:
             return matches[0][0]
