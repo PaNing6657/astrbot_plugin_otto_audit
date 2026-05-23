@@ -20,7 +20,7 @@
   "llm_base_url": {
     "description": "审核 LLM 接口地址",
     "type": "string",
-    "hint": "OpenAI 兼容: https://api.openai.com/v1 ; 豆包 Ark: https://ark.cn-beijing.volces.com/api/v3",
+    "hint": "OpenAI 兼容: https://api.openai.com/v1",
     "default": ""
   },
   "llm_api_key": {
@@ -38,9 +38,9 @@
   "llm_api_type": {
     "description": "审核 LLM 接口类型",
     "type": "string",
-    "options": ["openai", "ark"],
-    "hint": "openai 为 /v1/chat/completions 协议；ark 为豆包 /api/v3/responses 协议",
-    "default": "openai"
+    "options": ["chat", "response"],
+    "hint": "chat 为 /v1/chat/completions 协议；response 为 /v3/responses 协议",
+    "default": "chat"
   },
   "llm_timeout": {
     "description": "审核 LLM 超时（秒）",
