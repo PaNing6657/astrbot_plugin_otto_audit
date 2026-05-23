@@ -58,16 +58,11 @@ function render(data) {
 }
 
 async function loadHistory() {
-    try {
-        const resp = await fetch("/astrbot_plugin_otto_audit/get_history");
-        if (resp.ok) {
-            const data = await resp.json();
-            render(data);
-        } else {
-            console.error("[OTTOhub] API 返回:", resp.status);
-        }
-    } catch (e) {
-        console.error("[OTTOhub] 加载失败:", e);
+    const data = window.__OTTO_AUDIT_HISTORY__;
+    if (data) {
+        render(data);
+    } else {
+        console.warn("[OTTOhub] 历史数据未加载");
     }
 }
 

@@ -49,6 +49,8 @@ class OttoAuditPlugin(Star):
         self.history_path = os.path.join(self.data_dir, "otto_audit_history.json")
         self._audit_history = self._load_audit_history()
 
+        self._sync_history_js()
+
         plugin_config = PluginConfig.from_dict(
             self._load_merged_config(config if isinstance(config, dict) else {})
         )
@@ -146,6 +148,30 @@ class OttoAuditPlugin(Star):
                     os.remove(tmp_path)
             except OSError:
                 pass
+        self._sync_history_js()
+
+    def _sync_history_js(self) -> None:
+        try:
+            pages_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pages", "插件配置")
+            os.makedirs(pages_dir, exist_ok=True)
+            items = []
+            for key, record in self._audit_history.items():
+                items.append({
+                    "key": key,
+                    "type": record.get("type", ""),
+                    "id": record.get("id", ""),
+                    "result": record.get("result", ""),
+                    "time": record.get("time", 0),
+                })
+            items.sort(key=lambda x: x["time"], reverse=True)
+            js_path = os.path.join(pages_dir, "history_data.js")
+            js_content = f"window.__OTTO_AUDIT_HISTORY__ = {json.dumps({'success': True, 'history': items}, ensure_ascii=False)};"
+            tmp_js = f"{js_path}.{uuid.uuid4().hex}.tmp"
+            with open(tmp_js, "w", encoding="utf-8") as f:
+                f.write(js_content)
+            os.replace(tmp_js, js_path)
+        except Exception as exc:
+            logger.error(f"[{PLUGIN_NAME}] 同步历史 JS 失败: {exc}")
 
     def _check_audit_history(self, audit_type: str, target_id: int) -> Optional[str]:
         key = f"{audit_type}:{target_id}"
@@ -203,7 +229,6 @@ class OttoAuditPlugin(Star):
 
     async def get_history_handler(self):
         history = self._load_audit_history()
-        logger.info(f"[{PLUGIN_NAME}] get_history: 加载到 {len(history)} 条记录, 路径={self.history_path}")
         items = []
         for key, record in history.items():
             items.append({
@@ -214,9 +239,8 @@ class OttoAuditPlugin(Star):
                 "time": record.get("time", 0),
             })
         items.sort(key=lambda x: x["time"], reverse=True)
-        logger.info(f"[{PLUGIN_NAME}] get_history: 返回 {len(items)} 条记录")
+        js_code = f"window.__OTTO_AUDIT_HISTORY__ = {json.dumps({'success': True, 'history': items}, ensure_ascii=False)};"
         resp = jsonify({"success": True, "history": items})
-        resp.headers["Access-Control-Allow-Origin"] = "*"
         return resp
 
     # ========== Core Logic ==========
