@@ -5,15 +5,9 @@ const TYPE_LABELS = {
     cover: "封面",
 };
 
-const PLUGIN_NAME = "astrbot_plugin_otto_audit";
-
-const bridge = window.AstrBotPluginPage || {
+const bridge = window.AstrBotPluginPage || window.parent?.AstrBotPluginPage || {
     ready: async () => ({}),
-    apiGet: async (name) => {
-        console.warn("[OTTOhub] 使用 fallback fetch", name);
-        const resp = await fetch(`/${PLUGIN_NAME}/${name}`);
-        return resp.json();
-    },
+    apiGet: async () => { console.warn("[OTTOhub] bridge 不可用"); return { success: false, history: [] }; },
 };
 
 let allItems = [];
