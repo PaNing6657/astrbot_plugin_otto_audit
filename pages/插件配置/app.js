@@ -5,9 +5,15 @@ const TYPE_LABELS = {
     cover: "封面",
 };
 
+const PLUGIN_NAME = "astrbot_plugin_otto_audit";
+
 const bridge = window.AstrBotPluginPage || {
     ready: async () => ({}),
-    apiGet: async (name) => ({ success: true, history: [] }),
+    apiGet: async (name) => {
+        console.warn("[OTTOhub] 使用 fallback fetch", name);
+        const resp = await fetch(`/${PLUGIN_NAME}/${name}`);
+        return resp.json();
+    },
 };
 
 let allItems = [];
@@ -63,17 +69,23 @@ function render() {
 
 async function loadHistory() {
     try {
+        console.log("[OTTOhub] 正在加载审核日志...");
         const data = await bridge.apiGet("get_history");
+        console.log("[OTTOhub] API 返回:", data);
         if (data && data.success && Array.isArray(data.history)) {
             allItems = data.history;
+            console.log("[OTTOhub] 加载到", allItems.length, "条记录");
+        } else {
+            console.warn("[OTTOhub] 返回格式异常:", data);
         }
     } catch (e) {
-        console.warn("[OTTOhub] 加载日志失败", e);
+        console.error("[OTTOhub] 加载日志失败:", e);
     }
     render();
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     $("btn-refresh").addEventListener("click", loadHistory);
+    if (bridge.ready) await bridge.ready();
     loadHistory();
 });
