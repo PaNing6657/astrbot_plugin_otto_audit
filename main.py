@@ -126,11 +126,14 @@ class OttoAuditPlugin(Star):
 
     def _load_audit_history(self) -> Dict[str, Dict[str, Any]]:
         if not os.path.exists(self.history_path):
+            logger.info(f"[{PLUGIN_NAME}] 审核历史文件不存在: {self.history_path}")
             return {}
         try:
             with open(self.history_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            return data if isinstance(data, dict) else {}
+            result = data if isinstance(data, dict) else {}
+            logger.info(f"[{PLUGIN_NAME}] 加载审核历史: {len(result)} 条记录")
+            return result
         except Exception as exc:
             logger.error(f"[{PLUGIN_NAME}] 读取审核历史失败: {exc}")
             return {}
@@ -166,6 +169,7 @@ class OttoAuditPlugin(Star):
             "time": int(__import__("time").time()),
         }
         self._save_audit_history()
+        logger.info(f"[{PLUGIN_NAME}] 记录审核历史: {key} -> {result[:50]}")
 
     def _config_for_page(self) -> Dict[str, Any]:
         return {
@@ -205,6 +209,7 @@ class OttoAuditPlugin(Star):
 
     async def get_history_handler(self):
         history = self._load_audit_history()
+        logger.info(f"[{PLUGIN_NAME}] get_history: 加载到 {len(history)} 条记录, 路径={self.history_path}")
         items = []
         for key, record in history.items():
             items.append({
@@ -215,6 +220,7 @@ class OttoAuditPlugin(Star):
                 "time": record.get("time", 0),
             })
         items.sort(key=lambda x: x["time"], reverse=True)
+        logger.info(f"[{PLUGIN_NAME}] get_history: 返回 {len(items)} 条记录")
         return jsonify({"success": True, "history": items})
 
     # ========== Core Logic ==========
