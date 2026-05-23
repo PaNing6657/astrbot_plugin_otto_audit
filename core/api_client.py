@@ -77,7 +77,7 @@ class ModerationClient:
         items = await self.get_audit_list(content_type, offset=0, num=10)
         id_field = CONTENT_TYPE_MAP[content_type]["id_field"]
         for item in items:
-            if item.get(id_field) == content_id:
+            if str(item.get(id_field, "") or "") == str(content_id):
                 return item
         return None
 
