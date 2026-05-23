@@ -1,5 +1,5 @@
 """OTTOhub Moderation API 客户端。"""
-import time
+import difflib
 from typing import Any, Dict, List, Optional
 import aiohttp
 from astrbot.api import logger
@@ -16,9 +16,6 @@ class ModerationClient:
     def __init__(self, base_url: str, auth: AuthManager):
         self.base_url = base_url.rstrip("/")
         self.auth = auth
-        self._item_cache: Dict[str, Dict[int, Dict[str, Any]]] = {}
-        self._cache_ttl: float = 120.0
-        self._cache_time: Dict[str, float] = {}
 
     async def _get_token(self) -> str:
         token = self.auth.token
@@ -67,7 +64,6 @@ class ModerationClient:
             logger.info(f"✅ [OTTO] 获取到 {len(items)} 条待审{content_type}")
 
             all_items.extend(items)
-            self._cache_items(content_type, items)
 
             if len(items) < 10:
                 break
@@ -77,36 +73,32 @@ class ModerationClient:
         logger.info(f"📦 [OTTO] 共获取 {len(all_items)} 条待审{content_type}")
         return all_items
 
-    def _cache_items(self, content_type: str, items: List[Dict[str, Any]]) -> None:
-        id_field = CONTENT_TYPE_MAP[content_type]["id_field"]
-        now = time.time()
-        cache = self._item_cache.setdefault(content_type, {})
-        for item in items:
-            item_id = item.get(id_field)
-            if item_id is not None:
-                cache[int(item_id)] = dict(item)
-        self._cache_time[content_type] = now
-
-    def _get_cached_item(self, content_type: str, content_id: int) -> Optional[Dict[str, Any]]:
-        cache = self._item_cache.get(content_type, {})
-        cached_time = self._cache_time.get(content_type, 0)
-        if time.time() - cached_time > self._cache_ttl:
-            return None
-        item = cache.get(int(content_id))
-        if item:
-            return dict(item)
-        return None
-
     async def find_audit_item(self, content_type: str, content_id: int) -> Optional[Dict[str, Any]]:
-        cached = self._get_cached_item(content_type, content_id)
-        if cached:
-            logger.info(f"✅ [OTTO] 从缓存命中{content_type} ID={content_id}")
-            return cached
-        items = await self.get_audit_list(content_type, offset=0, num=100)
+        items = await self.get_audit_list(content_type, offset=0, num=10)
         id_field = CONTENT_TYPE_MAP[content_type]["id_field"]
         for item in items:
             if item.get(id_field) == content_id:
                 return item
+        return None
+
+    async def find_item_by_title(self, content_type: str, title: str) -> Optional[Dict[str, Any]]:
+        items = await self.get_audit_list(content_type, offset=0, num=10)
+        title_clean = title.strip().lower()
+        matches = []
+        for item in items:
+            item_title = str(item.get("title", "") or "").strip().lower()
+            item_content = str(item.get("content", "") or "").strip().lower()
+            item_username = str(item.get("username", "") or "").strip().lower()
+            candidates = [item_title, item_content, item_username]
+            best_ratio = max(
+                difflib.SequenceMatcher(None, title_clean, c).ratio() for c in candidates
+            )
+            if best_ratio >= 0.75:
+                matches.append((item, best_ratio))
+        if len(matches) == 1:
+            return matches[0][0]
+        if len(matches) > 1:
+            raise ApiError(f"标题匹配到 {len(matches)} 条结果（相似度≥75%），请提供准确的 ID")
         return None
 
     async def approve(self, content_type: str, content_id: int) -> bool:
