@@ -79,19 +79,7 @@ class OttoAuditPlugin(Star):
             f"/{PLUGIN_NAME}/get_history",
             self.get_history_handler,
             ["GET"],
-            "获取审核历史列表",
-        )
-        self.context.register_web_api(
-            f"/{PLUGIN_NAME}/delete_history",
-            self.delete_history_handler,
-            ["POST"],
-            "删除指定审核历史记录",
-        )
-        self.context.register_web_api(
-            f"/{PLUGIN_NAME}/clear_history",
-            self.clear_history_handler,
-            ["POST"],
-            "清空审核历史",
+            "获取 OTTOhub 审核日志",
         )
 
         logger.info(f"[{PLUGIN_NAME}] 插件初始化完成")
@@ -216,21 +204,18 @@ class OttoAuditPlugin(Star):
         return jsonify({"success": True, "message": "配置已保存"})
 
     async def get_history_handler(self):
-        return jsonify(self._audit_history)
-
-    async def delete_history_handler(self):
-        data = await request.get_json(silent=True)
-        key = str(data.get("key", "")).strip() if data else ""
-        if not key:
-            return jsonify({"success": False, "message": "缺少 key"}), 400
-        self._audit_history.pop(key, None)
-        self._save_audit_history()
-        return jsonify({"success": True})
-
-    async def clear_history_handler(self):
-        self._audit_history.clear()
-        self._save_audit_history()
-        return jsonify({"success": True})
+        history = self._load_audit_history()
+        items = []
+        for key, record in history.items():
+            items.append({
+                "key": key,
+                "type": record.get("type", ""),
+                "id": record.get("id", ""),
+                "result": record.get("result", ""),
+                "time": record.get("time", 0),
+            })
+        items.sort(key=lambda x: x["time"], reverse=True)
+        return jsonify({"success": True, "history": items})
 
     # ========== Core Logic ==========
 

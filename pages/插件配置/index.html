@@ -3,67 +3,34 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>OTTOhub 审核助手</title>
+    <title>OTTOhub 审核日志</title>
     <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
     <div class="app-shell">
-        <aside class="sidebar">
-            <div class="brand-block">
-                <div class="brand-mark">⚡</div>
-                <div>
-                    <h1>OTTOhub 审核助手</h1>
-                    <p>Audit History</p>
-                </div>
+        <header class="topbar">
+            <div>
+                <h1>OTTOhub 审核日志</h1>
+                <p class="subtitle">AI 自动审核操作记录</p>
             </div>
-            <div class="sidebar-status"><span></span>STANDBY</div>
-            <nav class="nav-menu">
-                <div class="nav-label">MANAGEMENT</div>
-                <button class="nav-item active" data-target="tab-history" type="button">
-                    <span class="nav-icon">📋</span><span>已审核列表</span>
-                </button>
-            </nav>
-            <div class="save-panel">
-                <div class="save-state" id="save-state">已就绪</div>
-                <button data-action="clear-all" class="btn-danger" type="button">清空全部记录</button>
-            </div>
-        </aside>
+            <button id="btn-refresh" class="btn-primary">刷新</button>
+        </header>
         <main class="content">
-            <header class="topbar">
-                <div>
-                    <span class="eyebrow">AUDIT RECORDS</span>
-                    <h2 id="active-title">已审核列表</h2>
-                </div>
-                <div class="status-pill"><span></span><span id="record-count">0</span> 条记录</div>
-            </header>
-
-            <section id="tab-history" class="tab-pane active">
-                <div class="page-grid">
-                    <article class="card">
-                        <div class="card-header">
-                            <h3>审核历史记录</h3>
-                            <p>已审核过的内容会记录在此，相同 ID 重复请求时会直接返回上次结果。</p>
-                        </div>
-                        <div class="table-wrap">
-                            <table id="history-table">
-                                <thead>
-                                    <tr>
-                                        <th>类型</th>
-                                        <th>ID</th>
-                                        <th>结果</th>
-                                        <th>时间</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="history-body"></tbody>
-                            </table>
-                        </div>
-                        <div class="empty-state" id="empty-state">
-                            <p>暂无审核记录</p>
-                        </div>
-                    </article>
-                </div>
-            </section>
+            <div id="log-summary" class="summary-bar"></div>
+            <div class="table-wrap">
+                <table id="log-table">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>类型</th>
+                            <th>ID</th>
+                            <th>结果</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-body"></tbody>
+                </table>
+            </div>
+            <div id="log-empty" class="empty-state">暂无审核记录</div>
         </main>
     </div>
     <script src="./app.js"></script>
