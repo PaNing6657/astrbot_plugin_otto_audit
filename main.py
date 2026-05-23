@@ -221,7 +221,9 @@ class OttoAuditPlugin(Star):
             })
         items.sort(key=lambda x: x["time"], reverse=True)
         logger.info(f"[{PLUGIN_NAME}] get_history: 返回 {len(items)} 条记录")
-        return jsonify({"success": True, "history": items})
+        resp = jsonify({"success": True, "history": items})
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp
 
     # ========== Core Logic ==========
 

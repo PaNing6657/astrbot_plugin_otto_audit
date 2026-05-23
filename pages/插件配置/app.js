@@ -5,11 +5,6 @@ const TYPE_LABELS = {
     cover: "封面",
 };
 
-const bridge = window.AstrBotPluginPage || window.parent?.AstrBotPluginPage || {
-    ready: async () => ({}),
-    apiGet: async () => { console.warn("[OTTOhub] bridge 不可用"); return { success: false, history: [] }; },
-};
-
 let allItems = [];
 
 function $(id) { return document.getElementById(id); }
@@ -32,12 +27,12 @@ function resultClass(result) {
     return "";
 }
 
-function render() {
+function render(data) {
     const tbody = $("log-body");
     const empty = $("log-empty");
     const summary = $("log-summary");
 
-    if (!allItems.length) {
+    if (!data || !data.success || !data.history || !data.history.length) {
         tbody.innerHTML = "";
         empty.style.display = "block";
         summary.textContent = "暂无审核记录";
@@ -46,12 +41,13 @@ function render() {
 
     empty.style.display = "none";
 
-    const pass = allItems.filter(i => i.result.includes("✅")).length;
-    const warn = allItems.filter(i => i.result.includes("⚠️")).length;
-    const skip = allItems.filter(i => i.result.includes("⏭️")).length;
-    summary.textContent = `共 ${allItems.length} 条 | ✅ 通过 ${pass} | ⚠️ 违规 ${warn} | ⏭️ 跳过 ${skip}`;
+    const items = data.history;
+    const pass = items.filter(i => i.result.includes("✅")).length;
+    const warn = items.filter(i => i.result.includes("⚠️")).length;
+    const skip = items.filter(i => i.result.includes("⏭️")).length;
+    summary.textContent = `共 ${items.length} 条 | ✅ 通过 ${pass} | ⚠️ 违规 ${warn} | ⏭️ 跳过 ${skip}`;
 
-    tbody.innerHTML = allItems.map(item => `
+    tbody.innerHTML = items.map(item => `
         <tr class="${resultClass(item.result)}">
             <td class="col-time">${timeStr(item.time)}</td>
             <td class="col-type">${typeLabel(item.type)}</td>
@@ -63,23 +59,20 @@ function render() {
 
 async function loadHistory() {
     try {
-        console.log("[OTTOhub] 正在加载审核日志...");
-        const data = await bridge.apiGet("get_history");
-        console.log("[OTTOhub] API 返回:", data);
-        if (data && data.success && Array.isArray(data.history)) {
-            allItems = data.history;
-            console.log("[OTTOhub] 加载到", allItems.length, "条记录");
+        const resp = await fetch("/astrbot_plugin_otto_audit/get_history");
+        if (resp.ok) {
+            const data = await resp.json();
+            render(data);
         } else {
-            console.warn("[OTTOhub] 返回格式异常:", data);
+            console.error("[OTTOhub] API 返回:", resp.status);
         }
     } catch (e) {
-        console.error("[OTTOhub] 加载日志失败:", e);
+        console.error("[OTTOhub] 加载失败:", e);
     }
-    render();
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
     $("btn-refresh").addEventListener("click", loadHistory);
-    if (bridge.ready) await bridge.ready();
     loadHistory();
 });
+
