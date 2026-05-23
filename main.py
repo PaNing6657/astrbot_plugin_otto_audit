@@ -16,6 +16,18 @@ from typing import Any, AsyncGenerator, Dict, Optional
 
 from quart import jsonify, request
 
+try:
+    from astrbot.api.star import Context, Star, register
+    from astrbot.api.event import AstrMessageEvent, filter
+    from astrbot.api.message_components import Plain
+    from astrbot.api import llm_tool, logger
+except Exception:
+    from astrbot.api.star import Context, Star, register
+    from astrbot.api.event import AstrMessageEvent, filter
+    from astrbot.api.event.components import Plain
+    from astrbot.api import llm_tool
+    from astrbot.api.utils import logger
+
 from .models import PluginConfig, CONTENT_TYPES, CONTENT_TYPE_MAP
 from .core.auth import AuthManager, AuthError
 from .core.api_client import ModerationClient, ApiError
