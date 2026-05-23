@@ -16,23 +16,6 @@ from typing import Any, AsyncGenerator, Dict, Optional
 
 from quart import jsonify, request
 
-try:
-    from astrbot.api.star import Context, Star, register
-    from astrbot.api.event import AstrMessageEvent, filter
-    from astrbot.api.message_components import Plain
-    from astrbot.api import llm_tool, logger
-except ImportError:
-    from astrbot.api.star import Context, Star, register
-    from astrbot.api.event import AstrMessageEvent, filter
-    from astrbot.api.event.components import Plain
-    from astrbot.api import llm_tool
-    from astrbot.api.utils import logger
-
-    from astrbot.core.utils.astrbot_path import get_astrbot_data_path
-except Exception:
-    def get_astrbot_data_path() -> str:
-        return os.path.join(os.getcwd(), "data")
-
 from .models import PluginConfig, CONTENT_TYPES, CONTENT_TYPE_MAP
 from .core.auth import AuthManager, AuthError
 from .core.api_client import ModerationClient, ApiError
@@ -47,7 +30,7 @@ PLUGIN_VERSION = "1.0.0"
 class OttoAuditPlugin(Star):
     def __init__(self, context: Context, config: Optional[dict] = None):
         super().__init__(context)
-        base_data_dir = str(get_astrbot_data_path())
+        base_data_dir = os.path.join(os.getcwd(), "data")
         self.data_dir = os.path.join(base_data_dir, "plugin_data", PLUGIN_NAME)
         os.makedirs(self.data_dir, exist_ok=True)
         self.config_path = os.path.join(self.data_dir, "otto_audit_config.json")
