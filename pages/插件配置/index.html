@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>OTTOhub 审核助手</title>
     <link rel="stylesheet" href="./style.css" />
 </head>
@@ -13,106 +13,53 @@
                 <div class="brand-mark">⚡</div>
                 <div>
                     <h1>OTTOhub 审核助手</h1>
-                    <p>Auto Moderator</p>
+                    <p>Audit History</p>
                 </div>
             </div>
             <div class="sidebar-status"><span></span>STANDBY</div>
             <nav class="nav-menu">
-                <div class="nav-label">SETTINGS</div>
-                <button class="nav-item active" data-target="tab-otto" type="button">
-                    <span class="nav-icon">🔑</span><span>OTTOhub</span>
-                </button>
-                <button class="nav-item" data-target="tab-llm" type="button">
-                    <span class="nav-icon">🧠</span><span>审核 LLM</span>
+                <div class="nav-label">MANAGEMENT</div>
+                <button class="nav-item active" data-target="tab-history" type="button">
+                    <span class="nav-icon">📋</span><span>已审核列表</span>
                 </button>
             </nav>
             <div class="save-panel">
-                <div class="save-state" id="save-state">配置已同步</div>
-                <button data-action="save-config" class="btn-primary" type="button">保存更改</button>
+                <div class="save-state" id="save-state">已就绪</div>
+                <button data-action="clear-all" class="btn-danger" type="button">清空全部记录</button>
             </div>
         </aside>
         <main class="content">
             <header class="topbar">
                 <div>
-                    <span class="eyebrow">PLUGIN SETTINGS</span>
-                    <h2 id="active-title">OTTOhub 设置</h2>
+                    <span class="eyebrow">AUDIT RECORDS</span>
+                    <h2 id="active-title">已审核列表</h2>
                 </div>
-                <div class="status-pill"><span></span>READY</div>
+                <div class="status-pill"><span></span><span id="record-count">0</span> 条记录</div>
             </header>
 
-            <section id="tab-otto" class="tab-pane active" data-title="OTTOhub 设置">
+            <section id="tab-history" class="tab-pane active">
                 <div class="page-grid">
                     <article class="card">
                         <div class="card-header">
-                            <h3>OTTOhub 账号设置</h3>
-                            <p>登录 OTTOhub 获取审核权限，需要审核员账号。</p>
+                            <h3>审核历史记录</h3>
+                            <p>已审核过的内容会记录在此，相同 ID 重复请求时会直接返回上次结果。</p>
                         </div>
-                        <div class="form-grid">
-                            <div class="form-group full-width">
-                                <label for="otto_base_url">API 地址</label>
-                                <input id="otto_base_url" type="text" class="input-modern" placeholder="https://api.ottohub.cn" />
-                            </div>
-                            <div class="form-group">
-                                <label for="otto_uid_email">UID / 邮箱</label>
-                                <input id="otto_uid_email" type="text" class="input-modern" placeholder="登录账号" />
-                            </div>
-                            <div class="form-group">
-                                <label for="otto_password">密码</label>
-                                <input id="otto_password" type="password" class="input-modern" placeholder="登录密码" />
-                            </div>
+                        <div class="table-wrap">
+                            <table id="history-table">
+                                <thead>
+                                    <tr>
+                                        <th>类型</th>
+                                        <th>ID</th>
+                                        <th>结果</th>
+                                        <th>时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-body"></tbody>
+                            </table>
                         </div>
-                    </article>
-                </div>
-            </section>
-
-            <section id="tab-llm" class="tab-pane" data-title="审核 LLM 设置">
-                <div class="page-grid">
-                    <article class="card">
-                        <div class="card-header">
-                            <h3>多模态审核模型</h3>
-                            <p>配置用于内容审核的多模态 LLM，需要支持图片理解能力。</p>
-                        </div>
-                        <div class="form-grid">
-                            <div class="form-group full-width">
-                                <label for="llm_base_url">接口地址</label>
-                                <input id="llm_base_url" type="text" class="input-modern" placeholder="例如 https://api.openai.com/v1" />
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="llm_api_key">API Key</label>
-                                <input id="llm_api_key" type="password" class="input-modern" placeholder="sk-..." />
-                            </div>
-                            <div class="form-group">
-                                <label for="llm_model">模型名</label>
-                                <input id="llm_model" type="text" class="input-modern" placeholder="gpt-4o" />
-                            </div>
-                            <div class="form-group">
-                                <label for="llm_api_type">接口类型</label>
-                                <select id="llm_api_type" class="input-modern">
-                                    <option value="openai">OpenAI 兼容 (/v1/chat/completions)</option>
-                                    <option value="ark">豆包 Ark (/api/v3/responses)</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="llm_timeout">超时（秒）</label>
-                                <input id="llm_timeout" type="number" class="input-modern" value="60" min="10" />
-                            </div>
-                        </div>
-                    </article>
-
-                    <article class="card">
-                        <div class="card-header">
-                            <h3>审核策略</h3>
-                            <p>合规内容直接通过，违规则提示人工复核。</p>
-                        </div>
-                        <div class="form-grid">
-                            <div class="form-group full-width">
-                                <label class="toggle-row">
-                                    <input id="auto_execute" type="checkbox" checked />
-                                    <span class="toggle-slider"></span>
-                                    <span>自动执行通过操作</span>
-                                </label>
-                                <p class="field-hint">开启后，AI 判定内容合规时会自动调用 approve 接口通过审核。</p>
-                            </div>
+                        <div class="empty-state" id="empty-state">
+                            <p>暂无审核记录</p>
                         </div>
                     </article>
                 </div>

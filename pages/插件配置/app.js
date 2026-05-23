@@ -1,120 +1,84 @@
-const mockConfig = {
-    otto_base_url: "https://api.ottohub.cn",
-    otto_uid_email: "",
-    otto_password: "",
-    llm_base_url: "",
-    llm_api_key: "",
-    llm_model: "gpt-4o",
-    llm_api_type: "openai",
-    llm_timeout: 60,
-    auto_execute: true,
-};
-
 const bridge = window.AstrBotPluginPage || {
     ready: async () => ({}),
-    apiGet: async () => JSON.parse(JSON.stringify(mockConfig)),
-    apiPost: async (name, payload) => {
-        console.info(`[OTTOhub preview] ${name}`, payload);
-        return { success: true };
-    }
-};
-
-let state = { ...mockConfig };
-
-const fieldMap = {
-    otto_base_url: "otto_base_url",
-    otto_uid_email: "otto_uid_email",
-    otto_password: "otto_password",
-    llm_base_url: "llm_base_url",
-    llm_api_key: "llm_api_key",
-    llm_model: "llm_model",
-    llm_api_type: "llm_api_type",
-    llm_timeout: "llm_timeout",
-    auto_execute: "auto_execute",
+    apiGet: async () => ({}),
+    apiPost: async () => ({ success: true }),
 };
 
 function $(id) { return document.getElementById(id); }
 
-function bindInput(id, key) {
-    const el = $(id);
-    if (!el) return;
-    if (el.type === "checkbox") {
-        el.addEventListener("change", () => { state[key] = el.checked; markDirty(); });
-    } else if (el.type === "number") {
-        el.addEventListener("input", () => { state[key] = parseInt(el.value) || 0; markDirty(); });
-    } else if (el.tagName === "SELECT") {
-        el.addEventListener("change", () => { state[key] = el.value; markDirty(); });
-    } else {
-        el.addEventListener("input", () => { state[key] = el.value; markDirty(); });
+const TYPE_LABELS = { video: "视频", blog: "动态", avatar: "头像", cover: "封面" };
+
+function formatTime(ts) {
+    if (!ts) return "-";
+    const d = new Date(ts * 1000);
+    return d.toLocaleString("zh-CN", { hour12: false });
+}
+
+function getResultClass(result) {
+    if (result.includes("✅")) return "result-pass";
+    if (result.includes("⚠️")) return "result-warn";
+    if (result.includes("⏭️")) return "result-skip";
+    if (result.includes("❌")) return "result-error";
+    return "";
+}
+
+function truncate(s, n = 60) {
+    return s && s.length > n ? s.slice(0, n) + "…" : s || "";
+}
+
+async function loadHistory() {
+    const data = await bridge.apiGet("get_history");
+    const records = data && typeof data === "object" ? data : {};
+    const keys = Object.keys(records).sort((a, b) => (records[b].time || 0) - (records[a].time || 0));
+
+    const tbody = $("history-body");
+    const empty = $("empty-state");
+    const countEl = $("record-count");
+
+    tbody.innerHTML = "";
+    countEl.textContent = keys.length;
+
+    if (!keys.length) {
+        empty.style.display = "block";
+        return;
     }
-}
+    empty.style.display = "none";
 
-function renderState() {
-    for (const [id, key] of Object.entries(fieldMap)) {
-        const el = $(id);
-        if (!el) continue;
-        if (el.type === "checkbox") el.checked = !!state[key];
-        else if (el.type === "number") el.value = state[key];
-        else if (el.tagName === "SELECT") el.value = state[key] || "openai";
-        else el.value = state[key] || "";
+    for (const key of keys) {
+        const r = records[key];
+        const tr = document.createElement("tr");
+        const typeLabel = TYPE_LABELS[r.type] || r.type || "-";
+        const resultClass = getResultClass(r.result || "");
+
+        tr.innerHTML = `
+            <td>${typeLabel}</td>
+            <td>${r.id ?? "-"}</td>
+            <td class="${resultClass}">${truncate(r.result || "", 80)}</td>
+            <td>${formatTime(r.time)}</td>
+            <td><button class="btn-sm" data-action="delete" data-key="${key}">删除</button></td>
+        `;
+        tbody.appendChild(tr);
     }
+
+    tbody.querySelectorAll('[data-action="delete"]').forEach(btn => {
+        btn.addEventListener("click", async () => {
+            const key = btn.dataset.key;
+            await bridge.apiPost("delete_history", { key });
+            loadHistory();
+            $("save-state").textContent = "✅ 已删除";
+        });
+    });
 }
 
-function markDirty() {
-    $("save-state").textContent = "⚠️ 有未保存的更改";
-}
-
-async function loadConfig() {
-    try {
-        const data = await bridge.apiGet("get_config");
-        if (data && typeof data === "object") {
-            state = { ...mockConfig, ...data };
-        }
-    } catch (e) {
-        console.warn("[OTTOhub] 使用默认配置", e);
-    }
-    renderState();
-}
-
-async function saveConfig() {
-    const btn = document.querySelector('[data-action="save-config"]');
-    btn.textContent = "保存中...";
-    btn.disabled = true;
-    try {
-        const resp = await bridge.apiPost("save_config", state);
-        if (resp && resp.success) {
-            $("save-state").textContent = "✅ 配置已保存";
-        } else {
-            $("save-state").textContent = "❌ 保存失败";
-        }
-    } catch (e) {
-        $("save-state").textContent = "❌ 保存失败: " + (e.message || e);
-    }
-    btn.textContent = "保存更改";
-    btn.disabled = false;
-}
-
-function activateTab(tabId) {
-    document.querySelectorAll(".tab-pane").forEach(t => t.classList.remove("active"));
-    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-
-    const pane = $(tabId);
-    if (pane) pane.classList.add("active");
-    const navBtn = document.querySelector(`.nav-item[data-target="${tabId}"]`);
-    if (navBtn) navBtn.classList.add("active");
-
-    const title = pane ? pane.dataset.title : "";
-    $("active-title").textContent = title || "设置";
+async function clearAll() {
+    if (!confirm("确定清空全部审核记录？")) return;
+    await bridge.apiPost("clear_history", {});
+    await loadHistory();
+    $("save-state").textContent = "✅ 已清空";
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-    for (const [id, key] of Object.entries(fieldMap)) bindInput(id, key);
-
-    document.querySelectorAll(".nav-item").forEach(btn => {
-        btn.addEventListener("click", () => activateTab(btn.dataset.target));
-    });
-
-    document.querySelector('[data-action="save-config"]').addEventListener("click", saveConfig);
-
-    await loadConfig();
+    await bridge.ready();
+    document.querySelector('[data-action="clear-all"]').addEventListener("click", clearAll);
+    await loadHistory();
 });
